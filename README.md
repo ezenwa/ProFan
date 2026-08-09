@@ -60,7 +60,7 @@ Outputs:
 
 ## Safety model
 
-Manual mode submits a constant fan curve to ASUS firmware and refreshes it periodically. Automatic restores the profile that was active before manual control. The 20% minimum prevents ProFan from intentionally requesting an unsafe zero-speed manual state. See [docs/SAFETY.md](docs/SAFETY.md).
+Manual mode submits a constant fan curve to ASUS firmware and keeps it active without repeatedly switching the ASUS performance profile. Automatic restores the profile that was active before manual control. The 20% minimum prevents ProFan from intentionally requesting an unsafe zero-speed manual state. See [docs/SAFETY.md](docs/SAFETY.md).
 
 ## Documentation
 

@@ -1,0 +1,24 @@
+# Build outputs
+build/
+dist/
+ui-check-*.png
+assets/*.ico
+*.exe
+*.pdb
+
+# Installer/editor state
+*.user
+*.suo
+*.cache
+
+# OS/editor files
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+*.tmp
+*.log
+
+# Local configuration
+ProFan.ini

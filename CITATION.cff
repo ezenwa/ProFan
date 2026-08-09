@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use ProFan in published work, please cite this software."
+title: "ProFan"
+type: software
+authors:
+  - given-names: Joshua
+    family-names: Ezenwa
+version: 1.1.7
+date-released: 2026-08-08
+license: GPL-3.0-only
+abstract: "A bilingual Fluent-style Windows fan controller for the ASUS ProArt PX13 HN7306."
+repository-code: "https://github.com/ezenwa/ProFan"

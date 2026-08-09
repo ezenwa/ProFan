@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible ProFan problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: checkboxes
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I returned ProFan to Automatic before collecting logs or repeating the issue.
+          required: true
+  - type: input
+    attributes:
+      label: ProFan version
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Laptop model and BIOS
+      placeholder: ASUS ProArt PX13 HN7306, BIOS ...
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Windows build
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Safe reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: RPM readings and other ASUS software
+      description: Include displayed CPU/GPU RPM and whether ProArt Creator Hub was running.

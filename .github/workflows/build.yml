@@ -1,0 +1,40 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build ProFan
+        shell: powershell
+        run: .\Build.ps1
+
+      - name: Create SHA-256 checksum
+        shell: powershell
+        run: |
+          $hash = (Get-FileHash .\dist\ProFan-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ProFan-Setup.exe" | Set-Content .\dist\ProFan-Setup.exe.sha256 -Encoding ascii
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProFan-Windows
+          path: |
+            dist/ProFan-Setup.exe
+            dist/ProFan-Setup.exe.sha256

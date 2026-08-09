@@ -4,7 +4,7 @@
   <img src="assets/profan-social-preview.png" alt="ProFan — Windows fan control" width="100%">
 </p>
 
-ProFan is a bilingual Windows fan-control utility for the **ASUS ProArt PX13 HN7306**, created by **Joshua Ezenwa**. It offers a dark Fluent-style interface, quick 20–100% presets, safe return to ASUS Automatic control, and an animated notification-area icon with live status.
+ProFan is a Windows fan-control utility for the **ASUS ProArt PX13 HN7306**. It offers a dark Fluent-style interface, quick 20–100% presets, safe return to ASUS Automatic control, and an animated notification-area icon with live status.
 
 > [!WARNING]
 > Hardware fan control carries risk. ProFan is tested only on the ASUS ProArt PX13 HN7306. Keep the BIOS, ASUS System Control Interface, and thermal protections enabled. Use at your own risk.

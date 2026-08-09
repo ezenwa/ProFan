@@ -19,6 +19,8 @@
 
 The percentage is a firmware request and may not map linearly to physical RPM.
 
+While manual control is active, ProFan maintains both fan curves every two seconds and recovers the manual performance endpoint if another ASUS service changes it. The selection remains active until you choose **Return to Automatic**, except for safety restoration on suspend, sign-out, full Exit, upgrade, or uninstall. Avoid running another fan-control utility at the same time.
+
 ## Español
 
 ### Requisitos
@@ -37,3 +39,5 @@ The percentage is a firmware request and may not map linearly to physical RPM.
 - **Salir:** restaura Automático y finaliza ProFan.
 
 El porcentaje es una solicitud al firmware y puede no corresponder linealmente con las RPM físicas.
+
+Mientras el control manual está activo, ProFan mantiene ambas curvas cada dos segundos y recupera el perfil manual si otro servicio ASUS lo cambia. La selección permanece activa hasta elegir **Volver a Automático**, excepto por la restauración de seguridad al suspender, cerrar sesión, usar Salir, actualizar o desinstalar. Evita ejecutar simultáneamente otra utilidad de control de ventiladores.

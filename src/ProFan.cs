@@ -72,6 +72,8 @@ namespace ProFan
         internal const uint CpuFan = 0x00110013;
         internal const uint GpuFan = 0x00110014;
         internal const int FullSpeed = 3;
+        private const uint CpuFanCurve = 0x00110024;
+        private const uint GpuFanCurve = 0x00110025;
         private static readonly IntPtr InvalidHandle = new IntPtr(-1);
         private IntPtr handle;
 
@@ -125,14 +127,20 @@ namespace ProFan
             return BitConverter.ToInt32(Call(Devs, arguments), 0);
         }
 
-        internal bool ApplyManualCurve(int percent)
+        internal bool StartManualControl(int percent)
+        {
+            if (Set(PerformanceMode, FullSpeed) != 1) return false;
+            Thread.Sleep(100);
+            return RefreshManualCurve(percent);
+        }
+
+        internal bool RefreshManualCurve(int percent)
         {
             byte speed = (byte)Math.Max(20, Math.Min(100, percent));
             byte[] curve = { 20, 30, 40, 50, 60, 70, 80, 90, speed, speed, speed, speed, speed, speed, speed, speed };
-            Set(PerformanceMode, FullSpeed);
-            int cpu = Set(0x00110024, (byte[])curve.Clone());
-            int gpu = Set(0x00110025, (byte[])curve.Clone());
-            return cpu == 1 || gpu == 1;
+            int cpu = Set(CpuFanCurve, (byte[])curve.Clone());
+            int gpu = Set(GpuFanCurve, (byte[])curve.Clone());
+            return cpu == 1 && gpu == 1;
         }
 
         internal int FanRpm(uint deviceId)
@@ -284,6 +292,7 @@ namespace ProFan
         private int previousMode;
         private int manualSpeed = 100;
         private int refreshCounter;
+        private const int ManualRefreshSeconds = 2;
         private int lastCpuRpm;
         private int lastGpuRpm;
         private int frameIndex;
@@ -709,12 +718,25 @@ namespace ProFan
             if (acpi == null) return;
             try
             {
+                bool wasManual = manualActive;
+                bool startRequired = true;
                 if (!manualActive)
                 {
                     int current = acpi.Get(AsusAcpi.PerformanceMode);
                     if (current >= 0 && current <= 4 && current != AsusAcpi.FullSpeed) previousMode = current;
                 }
-                if (!acpi.ApplyManualCurve(percent)) throw new InvalidOperationException(L.T("El firmware no aceptó la velocidad manual.", "The firmware rejected the manual speed."));
+                else
+                {
+                    startRequired = acpi.Get(AsusAcpi.PerformanceMode) != AsusAcpi.FullSpeed;
+                }
+                bool applied = startRequired
+                    ? acpi.StartManualControl(percent)
+                    : acpi.RefreshManualCurve(percent);
+                if (!applied)
+                {
+                    if (!wasManual) acpi.Set(AsusAcpi.PerformanceMode, previousMode);
+                    throw new InvalidOperationException(L.T("El firmware no aceptó la velocidad manual en ambos ventiladores.", "The firmware did not accept the manual speed for both fans."));
+                }
                 manualSpeed = percent;
                 manualActive = true;
                 refreshCounter = 0;
@@ -783,9 +805,14 @@ namespace ProFan
             if (acpi == null) return;
             try
             {
-                if (manualActive && ++refreshCounter >= 5)
+                if (manualActive && ++refreshCounter >= ManualRefreshSeconds)
                 {
-                    acpi.ApplyManualCurve(manualSpeed);
+                    int mode = acpi.Get(AsusAcpi.PerformanceMode);
+                    bool applied = mode == AsusAcpi.FullSpeed
+                        ? acpi.RefreshManualCurve(manualSpeed)
+                        : acpi.StartManualControl(manualSpeed);
+                    if (!applied)
+                        throw new InvalidOperationException(L.T("No se pudo mantener la velocidad manual.", "Could not maintain the manual speed."));
                     refreshCounter = 0;
                 }
                 int cpu = acpi.FanRpm(AsusAcpi.CpuFan);

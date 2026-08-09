@@ -2,6 +2,14 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.8] - 2026-08-09
+
+### Fixed
+
+- Keeps manual fan speeds stable by refreshing only the CPU and GPU curves without repeatedly switching the ASUS performance profile.
+- Recovers manual control if another ASUS service changes the active performance mode.
+- Requires both CPU and GPU fans to accept a manual curve before reporting success.
+
 ## [1.1.7] - 2026-08-08
 
 ### Changed

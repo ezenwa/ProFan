@@ -2,6 +2,13 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.16] - 2026-08-13
+
+### Fixed
+
+- Makes the notification-area startup option register an elevated logon task so ProFan actually starts with Windows and opens minimized.
+- Migrates the previous Start minimized preference and removes the startup task during uninstall.
+
 ## [1.1.15] - 2026-08-12
 
 ### Changed

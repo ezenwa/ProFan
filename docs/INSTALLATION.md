@@ -14,9 +14,9 @@
 - **20–100%:** applies the selected constant fan curve.
 - **Return to Automatic:** restores the ASUS profile active before manual control.
 - **Notification-area icon:** right-click for quick presets, status, Open, or Exit.
-- **Open ProFan:** restores the main window centered in the working area of the screen containing the pointer, even when Start minimized is enabled.
+- **Open ProFan:** restores the main window centered in the working area of the screen containing the pointer.
 - **Close window:** preserves the current mode and keeps ProFan available in the notification area.
-- **Start minimized:** when enabled in the notification-area menu, future launches open directly in that area.
+- **Start with Windows (minimized):** creates an elevated logon task so ProFan starts automatically in the notification area without a UAC prompt. Manual launches still open the main window.
 - **Check for updates:** checks the latest GitHub release; ProFan also checks automatically at startup and alerts only when a newer version is available.
 - **Exit:** restores Automatic and terminates ProFan.
 
@@ -38,9 +38,9 @@ While manual control is active, ProFan maintains both fan curves every two secon
 - **20–100%:** aplica la curva constante seleccionada.
 - **Volver a Automático:** restaura el perfil ASUS anterior.
 - **Icono del área de notificación:** clic derecho para porcentajes, estado, Abrir o Salir.
-- **Abrir ProFan:** restaura la ventana principal centrada en el área útil de la pantalla donde está el puntero, aunque Iniciar minimizado esté activado.
+- **Abrir ProFan:** restaura la ventana principal centrada en el área útil de la pantalla donde está el puntero.
 - **Cerrar ventana:** conserva el modo actual y mantiene ProFan en el área de notificación.
-- **Iniciar minimizado:** al activarlo en el menú del área de notificación, los próximos inicios se abren directamente en esa área.
+- **Iniciar con Windows (minimizado):** crea una tarea de inicio de sesión elevada para que ProFan arranque automáticamente en el área de notificación sin mostrar UAC. Las aperturas manuales siguen mostrando la ventana principal.
 - **Buscar actualizaciones:** consulta la release más reciente en GitHub; ProFan también lo hace automáticamente al iniciar y solo avisa si existe una versión superior.
 - **Salir:** restaura Automático y finaliza ProFan.
 

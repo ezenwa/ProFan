@@ -40,6 +40,13 @@ namespace ProFan
         {
             L.Init();
             bool exitCommand = args.Length > 0 && string.Equals(args[0], "--exit", StringComparison.OrdinalIgnoreCase);
+            bool startupCommand = args.Length > 0 && string.Equals(args[0], "--startup", StringComparison.OrdinalIgnoreCase);
+            bool startWithWindows = UserSettings.StartWithWindows;
+            if (startWithWindows && !startupCommand)
+            {
+                try { UserSettings.StartWithWindows = true; }
+                catch { }
+            }
             bool exitEventCreated;
             using (var exitSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "ProFan-ExitSignal", out exitEventCreated))
             {
@@ -62,7 +69,7 @@ namespace ProFan
                 if (exitCommand) return;
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new MainForm(exitSignal, showSignal, UserSettings.StartMinimized));
+                Application.Run(new MainForm(exitSignal, showSignal, startupCommand, startWithWindows));
             }
             }
             }
@@ -72,25 +79,80 @@ namespace ProFan
     internal static class UserSettings
     {
         private const string RegistryPath = @"Software\ProFan";
+        private const string StartupTaskName = "ProFan-ASUS-HN7306";
 
-        internal static bool StartMinimized
+        internal static bool StartWithWindows
         {
             get
             {
                 try
                 {
                     using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryPath))
-                        return key != null && Convert.ToInt32(key.GetValue("StartMinimized", 0), CultureInfo.InvariantCulture) != 0;
+                    {
+                        if (key == null) return false;
+                        object value = key.GetValue("StartWithWindows", null);
+                        if (value == null) value = key.GetValue("StartMinimized", 0);
+                        return Convert.ToInt32(value, CultureInfo.InvariantCulture) != 0;
+                    }
                 }
                 catch { return false; }
             }
             set
             {
+                ConfigureStartupTask(value);
                 using (RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath))
                 {
                     if (key == null) throw new InvalidOperationException(L.T("No se pudo guardar la preferencia.", "Could not save the preference."));
-                    key.SetValue("StartMinimized", value ? 1 : 0, RegistryValueKind.DWord);
+                    key.SetValue("StartWithWindows", value ? 1 : 0, RegistryValueKind.DWord);
+                    key.DeleteValue("StartMinimized", false);
                 }
+            }
+        }
+
+        private static void ConfigureStartupTask(bool enabled)
+        {
+            if (enabled)
+            {
+                string executable = Application.ExecutablePath;
+                if (executable.IndexOf('\"') >= 0)
+                    throw new InvalidOperationException(L.T("La ruta de ProFan no es válida.", "The ProFan path is not valid."));
+                string arguments = "/Create /SC ONLOGON /TN \"" + StartupTaskName +
+                    "\" /TR \"\\\"" + executable + "\\\" --startup\" /RL HIGHEST /F";
+                RunTaskScheduler(arguments, true);
+            }
+            else
+            {
+                int queryResult = RunTaskScheduler("/Query /TN \"" + StartupTaskName + "\"", false);
+                if (queryResult == 0)
+                    RunTaskScheduler("/Delete /TN \"" + StartupTaskName + "\" /F", true);
+            }
+        }
+
+        private static int RunTaskScheduler(string arguments, bool throwOnFailure)
+        {
+            var info = new ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "schtasks.exe"),
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using (Process process = Process.Start(info))
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                if (throwOnFailure && process.ExitCode != 0)
+                {
+                    string detail = string.IsNullOrWhiteSpace(error) ? output : error;
+                    throw new InvalidOperationException(L.T(
+                        "No se pudo configurar el inicio con Windows.",
+                        "Could not configure startup with Windows.") +
+                        (string.IsNullOrWhiteSpace(detail) ? "" : Environment.NewLine + detail.Trim()));
+                }
+                return process.ExitCode;
             }
         }
     }
@@ -338,7 +400,7 @@ namespace ProFan
         private bool syncingStartMinimized;
         private bool handlingInitialMinimize;
         private readonly Size normalWindowSize;
-        private readonly bool startMinimized;
+        private readonly bool startWithWindows;
         private bool checkingForUpdates;
         private string updateUrl;
 
@@ -351,9 +413,9 @@ namespace ProFan
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hwnd);
 
-        internal MainForm(EventWaitHandle exitSignal, EventWaitHandle showSignal, bool startMinimized)
+        internal MainForm(EventWaitHandle exitSignal, EventWaitHandle showSignal, bool startMinimized, bool startWithWindows)
         {
-            this.startMinimized = startMinimized;
+            this.startWithWindows = startWithWindows;
             handlingInitialMinimize = startMinimized;
             Text = "ProFan";
             ClientSize = new Size(520, 410);
@@ -538,9 +600,9 @@ namespace ProFan
                 if (string.IsNullOrEmpty(updateUrl)) CheckForUpdates(true);
                 else OpenUpdatePage();
             };
-            trayStartMinimized.Text = L.T("Iniciar minimizado", "Start minimized");
+            trayStartMinimized.Text = L.T("Iniciar con Windows (minimizado)", "Start with Windows (minimized)");
             trayStartMinimized.CheckOnClick = true;
-            trayStartMinimized.Checked = startMinimized;
+            trayStartMinimized.Checked = startWithWindows;
             trayStartMinimized.CheckedChanged += TrayStartMinimizedChanged;
             var exit = new ToolStripMenuItem(L.T("Salir", "Exit"));
             exit.Click += delegate { exitRequested = true; SafeRestore(); Close(); };
@@ -875,21 +937,21 @@ namespace ProFan
         private void TrayStartMinimizedChanged(object sender, EventArgs e)
         {
             if (syncingStartMinimized) return;
-            SaveStartMinimized(trayStartMinimized.Checked);
+            SaveStartWithWindows(trayStartMinimized.Checked);
         }
 
-        private void SaveStartMinimized(bool value)
+        private void SaveStartWithWindows(bool value)
         {
             try
             {
-                UserSettings.StartMinimized = value;
+                UserSettings.StartWithWindows = value;
                 syncingStartMinimized = true;
                 trayStartMinimized.Checked = value;
             }
             catch (Exception ex)
             {
                 syncingStartMinimized = true;
-                bool saved = UserSettings.StartMinimized;
+                bool saved = UserSettings.StartWithWindows;
                 trayStartMinimized.Checked = saved;
                 MessageBox.Show(ex.Message, "ProFan", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }

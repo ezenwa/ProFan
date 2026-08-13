@@ -18,7 +18,7 @@ ProFan is a Windows fan-control utility for the **ASUS ProArt PX13 HN7306**. It 
 - Animated fan icon in the Windows notification area.
 - Two-line tooltip and menu header showing mode, CPU RPM, and GPU RPM.
 - Closing the window keeps the current mode active in the notification area.
-- Optional minimized startup, configurable from the notification-area menu.
+- Optional elevated startup with Windows, minimized to the notification area and configurable from its menu.
 - Automatic GitHub update checks with notification-area alerts and a manual check action.
 - Automatic restore when suspending, signing out, or exiting ProFan completely.
 - Spanish/English Inno Setup installer, Start menu shortcut, desktop shortcut, and uninstaller.
@@ -31,7 +31,7 @@ ProFan is a Windows fan-control utility for the **ASUS ProArt PX13 HN7306**. It 
 
 <p align="center">
   <strong>Notification-area quick controls</strong><br>
-  <img src="assets/profan-tray-preview.png" alt="ProFan notification-area menu with mode, RPM status, update check, and minimized-startup option" width="264">
+  <img src="assets/profan-tray-preview.png" alt="ProFan notification-area menu with mode, RPM status, update check, and Windows-startup option" width="264">
 </p>
 
 ## Install
@@ -75,7 +75,7 @@ Manual mode submits a constant fan curve to ASUS firmware and keeps it active wi
 
 ## Español
 
-ProFan es una utilidad bilingüe para Windows creada por **Joshua Ezenwa** y probada en la **ASUS ProArt PX13 HN7306**. Incluye botones de 20–100%, retorno inmediato al control Automático de ASUS, interfaz Fluent oscura, inicio minimizado opcional, comprobación de actualizaciones en GitHub e icono animado con RPM en el área de notificación. Al abrir la interfaz desde la bandeja, se restaura centrada en el monitor activo.
+ProFan es una utilidad bilingüe para Windows creada por **Joshua Ezenwa** y probada en la **ASUS ProArt PX13 HN7306**. Incluye botones de 20–100%, retorno inmediato al control Automático de ASUS, interfaz Fluent oscura, inicio opcional con Windows minimizado, comprobación de actualizaciones en GitHub e icono animado con RPM en el área de notificación. Al abrir la interfaz desde la bandeja, se restaura centrada en el monitor activo.
 
 Consulta la [guía de instalación y uso](docs/INSTALLATION.md) y la [guía de seguridad](docs/SAFETY.md) antes de utilizarla.
 

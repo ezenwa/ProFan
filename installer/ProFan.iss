@@ -1,5 +1,5 @@
 #define MyAppName "ProFan"
-#define MyAppVersion "1.1.15"
+#define MyAppVersion "1.1.16"
 #define MyAppPublisher "Joshua Ezenwa"
 #define MyAppExeName "ProFan.exe"
 
@@ -46,6 +46,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}
 
 [UninstallRun]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--exit"; Flags: runhidden waituntilterminated; RunOnceId: "StopProFan"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""ProFan-ASUS-HN7306"" /F"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveStartupTask"
 
 [Code]
 function SelectedLanguage(Param: String): String;

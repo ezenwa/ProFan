@@ -31,7 +31,7 @@ ProFan is a Windows fan-control utility for the **ASUS ProArt PX13 HN7306**. It 
 
 <p align="center">
   <strong>Notification-area quick controls</strong><br>
-  <img src="assets/profan-tray-preview.png" alt="ProFan notification-area menu with mode and RPM status" width="264">
+  <img src="assets/profan-tray-preview.png" alt="ProFan notification-area menu with mode, RPM status, update check, and minimized-startup option" width="264">
 </p>
 
 ## Install

@@ -1,5 +1,23 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$assemblyText = Get-Content -Raw -LiteralPath (Join-Path $root 'src\AssemblyInfo.cs')
+$installerText = Get-Content -Raw -LiteralPath (Join-Path $root 'installer\ProFan.iss')
+$citationText = Get-Content -Raw -LiteralPath (Join-Path $root 'CITATION.cff')
+$manifestText = Get-Content -Raw -LiteralPath (Join-Path $root 'src\ProFan.manifest')
+$assemblyVersion = [regex]::Match($assemblyText, 'AssemblyFileVersion\("([0-9.]+)"\)').Groups[1].Value
+$releaseVersion = $assemblyVersion -replace '\.0$',''
+$expectedVersions = @{
+    'installer\ProFan.iss' = [regex]::Match($installerText, '#define MyAppVersion "([0-9.]+)"').Groups[1].Value
+    'CITATION.cff' = [regex]::Match($citationText, '(?m)^version:\s*([0-9.]+)\s*$').Groups[1].Value
+    'src\ProFan.manifest' = ([regex]::Match($manifestText, '<assemblyIdentity version="([0-9.]+)"').Groups[1].Value -replace '\.0$','')
+}
+if ([string]::IsNullOrWhiteSpace($assemblyVersion) -or [string]::IsNullOrWhiteSpace($releaseVersion)) { throw 'No se pudo determinar la versión de la aplicación.' }
+foreach ($entry in $expectedVersions.GetEnumerator()) {
+    if ($entry.Value -ne $releaseVersion) { throw "Versión desalineada en $($entry.Key): $($entry.Value); esperada: $releaseVersion." }
+}
+foreach ($preview in 'profan-automatic-preview.png','profan-manual-preview.png','profan-tray-preview.png','profan-social-preview.png') {
+    if (-not (Test-Path -LiteralPath (Join-Path $root "assets\$preview") -PathType Leaf)) { throw "Falta el preview requerido: assets\$preview" }
+}
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $isccCandidates = @(
     'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',

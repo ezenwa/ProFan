@@ -2,6 +2,14 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.14] - 2026-08-12
+
+### Changed
+
+- Updates the notification-area preview to show Start minimized and Check for updates.
+- Aligns the Windows manifest identity with the application release version.
+- Makes the build fail when version metadata or required interface previews are out of sync.
+
 ## [1.1.13] - 2026-08-12
 
 ### Added

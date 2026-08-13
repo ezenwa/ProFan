@@ -14,8 +14,10 @@
 - **20–100%:** applies the selected constant fan curve.
 - **Return to Automatic:** restores the ASUS profile active before manual control.
 - **Notification-area icon:** right-click for quick presets, status, Open, or Exit.
+- **Open ProFan:** restores the main window centered in the working area of the screen containing the pointer, even when Start minimized is enabled.
 - **Close window:** preserves the current mode and keeps ProFan available in the notification area.
 - **Start minimized:** when enabled in the notification-area menu, future launches open directly in that area.
+- **Check for updates:** checks the latest GitHub release; ProFan also checks automatically at startup and alerts only when a newer version is available.
 - **Exit:** restores Automatic and terminates ProFan.
 
 The percentage is a firmware request and may not map linearly to physical RPM.
@@ -36,8 +38,10 @@ While manual control is active, ProFan maintains both fan curves every two secon
 - **20–100%:** aplica la curva constante seleccionada.
 - **Volver a Automático:** restaura el perfil ASUS anterior.
 - **Icono del área de notificación:** clic derecho para porcentajes, estado, Abrir o Salir.
+- **Abrir ProFan:** restaura la ventana principal centrada en el área útil de la pantalla donde está el puntero, aunque Iniciar minimizado esté activado.
 - **Cerrar ventana:** conserva el modo actual y mantiene ProFan en el área de notificación.
 - **Iniciar minimizado:** al activarlo en el menú del área de notificación, los próximos inicios se abren directamente en esa área.
+- **Buscar actualizaciones:** consulta la release más reciente en GitHub; ProFan también lo hace automáticamente al iniciar y solo avisa si existe una versión superior.
 - **Salir:** restaura Automático y finaliza ProFan.
 
 El porcentaje es una solicitud al firmware y puede no corresponder linealmente con las RPM físicas.

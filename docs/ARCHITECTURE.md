@@ -16,6 +16,8 @@ ProFan is a single .NET Framework Windows executable. `AsusAcpi` opens `\\.\ATKA
 
 Two timers are used: a one-second hardware/status timer and a lightweight notification-icon animation timer. While manual control is active, the status timer refreshes only the CPU and GPU curves every two seconds, without repeatedly switching the performance endpoint. If another ASUS service changes that endpoint, ProFan re-enters manual control and reapplies both curves. A failed maintenance request is retried on the next timer tick. Twelve icon frames are created once and disposed at shutdown.
 
-A named mutex prevents multiple controller instances. A named event powers `ProFan.exe --exit`, allowing the installer/uninstaller to request a safe restore and shutdown.
+A named mutex prevents multiple controller instances. Named events power `ProFan.exe --exit` and reopening the existing instance. The exit signal allows the installer/uninstaller to request a safe restore and shutdown; the show signal restores the main window, centers it in the working area of the screen containing the pointer, and brings it to the foreground.
 
 The installer stores the chosen UI language in `ProFan.ini` beside the installed executable. The optional minimized-startup preference is stored per user as the `StartMinimized` DWORD under `HKEY_CURRENT_USER\Software\ProFan`; it can be changed from the notification-area menu and does not affect fan-control state.
+
+At startup, a background request checks the repository's latest GitHub Release with a seven-second timeout. A newer semantic version updates the notification-area action and displays an update balloon; network failures remain silent unless the user requests a manual check.

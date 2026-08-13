@@ -2,6 +2,17 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.13] - 2026-08-12
+
+### Added
+
+- Checks GitHub Releases for updates at startup and provides a manual notification-area check action.
+
+### Fixed
+
+- Restores the main window centered on the active screen from Open ProFan, independently of the Start minimized preference.
+- Reopening ProFan from a shortcut now shows the existing instance instead of displaying an already-running message.
+
 ## [1.1.9] - 2026-08-12
 
 ### Added

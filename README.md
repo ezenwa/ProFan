@@ -19,6 +19,7 @@ ProFan is a Windows fan-control utility for the **ASUS ProArt PX13 HN7306**. It 
 - Two-line tooltip and menu header showing mode, CPU RPM, and GPU RPM.
 - Closing the window keeps the current mode active in the notification area.
 - Optional minimized startup, configurable from the notification-area menu.
+- Automatic GitHub update checks with notification-area alerts and a manual check action.
 - Automatic restore when suspending, signing out, or exiting ProFan completely.
 - Spanish/English Inno Setup installer, Start menu shortcut, desktop shortcut, and uninstaller.
 
@@ -74,7 +75,7 @@ Manual mode submits a constant fan curve to ASUS firmware and keeps it active wi
 
 ## Español
 
-ProFan es una utilidad bilingüe para Windows creada por **Joshua Ezenwa** y probada en la **ASUS ProArt PX13 HN7306**. Incluye botones de 20–100%, retorno inmediato al control Automático de ASUS, interfaz Fluent oscura e icono animado con RPM en el área de notificación.
+ProFan es una utilidad bilingüe para Windows creada por **Joshua Ezenwa** y probada en la **ASUS ProArt PX13 HN7306**. Incluye botones de 20–100%, retorno inmediato al control Automático de ASUS, interfaz Fluent oscura, inicio minimizado opcional, comprobación de actualizaciones en GitHub e icono animado con RPM en el área de notificación. Al abrir la interfaz desde la bandeja, se restaura centrada en el monitor activo.
 
 Consulta la [guía de instalación y uso](docs/INSTALLATION.md) y la [guía de seguridad](docs/SAFETY.md) antes de utilizarla.
 

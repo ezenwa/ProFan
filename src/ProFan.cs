@@ -6,6 +6,9 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Globalization;
 using System.IO;
+using System.Diagnostics;
+using System.Net;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace ProFan
@@ -40,6 +43,9 @@ namespace ProFan
             bool exitEventCreated;
             using (var exitSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "ProFan-ExitSignal", out exitEventCreated))
             {
+            bool showEventCreated;
+            using (var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "ProFan-ShowSignal", out showEventCreated))
+            {
             bool created;
             using (var mutex = new Mutex(true, "ProFan-ASUS-HN7306", out created))
             {
@@ -50,13 +56,14 @@ namespace ProFan
                         exitSignal.Set();
                         return;
                     }
-                    MessageBox.Show(L.T("ProFan ya está ejecutándose en la bandeja del sistema.", "ProFan is already running in the system tray."), "ProFan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    showSignal.Set();
                     return;
                 }
                 if (exitCommand) return;
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new MainForm(exitSignal, UserSettings.StartMinimized));
+                Application.Run(new MainForm(exitSignal, showSignal, UserSettings.StartMinimized));
+            }
             }
             }
         }
@@ -311,6 +318,7 @@ namespace ProFan
         private readonly ToolStripLabel trayStatus = new ToolStripLabel();
         private readonly ToolStripMenuItem trayAuto = new ToolStripMenuItem("Automático");
         private readonly ToolStripMenuItem trayStartMinimized = new ToolStripMenuItem();
+        private readonly ToolStripMenuItem trayUpdates = new ToolStripMenuItem();
         private readonly ToolStripMenuItem[] traySpeeds = new ToolStripMenuItem[5];
         private AsusAcpi acpi;
         private bool manualActive;
@@ -325,22 +333,31 @@ namespace ProFan
         private int frameIndex;
         private Icon[] trayFrames;
         private RegisteredWaitHandle exitWait;
+        private RegisteredWaitHandle showWait;
         private bool applyingLayout;
         private bool syncingStartMinimized;
         private bool handlingInitialMinimize;
+        private readonly Size normalWindowSize;
         private readonly bool startMinimized;
+        private bool checkingForUpdates;
+        private string updateUrl;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
         [DllImport("user32.dll")]
         private static extern bool DestroyIcon(IntPtr handle);
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hwnd, int command);
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hwnd);
 
-        internal MainForm(EventWaitHandle exitSignal, bool startMinimized)
+        internal MainForm(EventWaitHandle exitSignal, EventWaitHandle showSignal, bool startMinimized)
         {
             this.startMinimized = startMinimized;
             handlingInitialMinimize = startMinimized;
             Text = "ProFan";
             ClientSize = new Size(520, 410);
+            normalWindowSize = Size;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             MinimizeBox = true;
@@ -413,23 +430,26 @@ namespace ProFan
             Load += OnLoad;
             Shown += delegate
             {
-                if (this.startMinimized)
+                BeginInvoke(new Action(delegate
                 {
-                    Hide();
-                    WindowState = FormWindowState.Normal;
-                    ShowInTaskbar = true;
-                    handlingInitialMinimize = false;
-                }
-                BeginInvoke(new Action(ApplyContentLayout));
+                    if (handlingInitialMinimize)
+                    {
+                        handlingInitialMinimize = false;
+                        Hide();
+                        WindowState = FormWindowState.Normal;
+                        CenterMainWindow();
+                    }
+                    ApplyContentLayout();
+                }));
             };
             FormClosing += OnClosing;
             Resize += delegate
             {
                 if (WindowState == FormWindowState.Minimized)
                 {
+                    if (handlingInitialMinimize) return;
                     Hide();
-                    if (!handlingInitialMinimize)
-                        ShowTrayTip(L.T("ProFan continúa disponible aquí.", "ProFan is still available here."));
+                    ShowTrayTip(L.T("ProFan continúa disponible aquí.", "ProFan is still available here."));
                 }
                 else ApplyContentLayout();
             };
@@ -442,14 +462,16 @@ namespace ProFan
             animationTimer.Tick += AnimateTray;
             animationTimer.Start();
             if (startMinimized)
-            {
                 WindowState = FormWindowState.Minimized;
-                ShowInTaskbar = false;
-            }
             exitWait = ThreadPool.RegisterWaitForSingleObject(exitSignal, delegate
             {
                 if (!IsDisposed && IsHandleCreated)
                     BeginInvoke(new Action(delegate { exitRequested = true; SafeRestore(); Close(); }));
+            }, null, Timeout.Infinite, false);
+            showWait = ThreadPool.RegisterWaitForSingleObject(showSignal, delegate
+            {
+                if (!IsDisposed && IsHandleCreated)
+                    BeginInvoke(new Action(ShowFromTray));
             }, null, Timeout.Infinite, false);
         }
 
@@ -510,6 +532,12 @@ namespace ProFan
             open.Click += delegate { ShowFromTray(); };
             var about = new ToolStripMenuItem(L.T("Acerca de ProFan", "About ProFan"));
             about.Click += delegate { ShowAbout(); };
+            trayUpdates.Text = L.T("Buscar actualizaciones", "Check for updates");
+            trayUpdates.Click += delegate
+            {
+                if (string.IsNullOrEmpty(updateUrl)) CheckForUpdates(true);
+                else OpenUpdatePage();
+            };
             trayStartMinimized.Text = L.T("Iniciar minimizado", "Start minimized");
             trayStartMinimized.CheckOnClick = true;
             trayStartMinimized.Checked = startMinimized;
@@ -518,6 +546,7 @@ namespace ProFan
             exit.Click += delegate { exitRequested = true; SafeRestore(); Close(); };
             trayMenu.Items.Add(open);
             trayMenu.Items.Add(about);
+            trayMenu.Items.Add(trayUpdates);
             trayMenu.Items.Add(trayStartMinimized);
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add(exit);
@@ -527,6 +556,7 @@ namespace ProFan
             tray.ContextMenuStrip = trayMenu;
             tray.Visible = true;
             tray.DoubleClick += delegate { ShowFromTray(); };
+            tray.BalloonTipClicked += delegate { if (!string.IsNullOrEmpty(updateUrl)) OpenUpdatePage(); };
         }
 
         private void ShowAbout()
@@ -707,6 +737,78 @@ namespace ProFan
                 state.ForeColor = Color.FromArgb(255, 99, 106);
                 MessageBox.Show(ex.Message, "ProFan", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            CheckForUpdates(false);
+        }
+
+        private void CheckForUpdates(bool notifyWhenCurrent)
+        {
+            if (checkingForUpdates) return;
+            checkingForUpdates = true;
+            trayUpdates.Enabled = false;
+            trayUpdates.Text = L.T("Buscando actualizaciones…", "Checking for updates…");
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                    var request = (HttpWebRequest)WebRequest.Create("https://api.github.com/repos/ezenwa/ProFan/releases/latest");
+                    request.UserAgent = "ProFan/" + Application.ProductVersion;
+                    request.Accept = "application/vnd.github+json";
+                    request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                    request.Timeout = 7000;
+                    request.ReadWriteTimeout = 7000;
+                    string json;
+                    using (var response = (HttpWebResponse)request.GetResponse())
+                    using (var reader = new StreamReader(response.GetResponseStream()))
+                        json = reader.ReadToEnd();
+
+                    Match match = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"v?([0-9]+(?:\\.[0-9]+){1,3})\"", RegexOptions.IgnoreCase);
+                    Version latest;
+                    Version current;
+                    if (!match.Success || !Version.TryParse(match.Groups[1].Value, out latest) || !Version.TryParse(Application.ProductVersion, out current))
+                        throw new InvalidOperationException("Invalid release version.");
+
+                    string versionText = match.Groups[1].Value;
+                    string releaseUrl = "https://github.com/ezenwa/ProFan/releases/tag/v" + versionText;
+                    if (!IsDisposed && IsHandleCreated)
+                        BeginInvoke(new Action(delegate
+                        {
+                            checkingForUpdates = false;
+                            trayUpdates.Enabled = true;
+                            if (latest > current)
+                            {
+                                updateUrl = releaseUrl;
+                                trayUpdates.Text = L.T("Descargar ProFan v", "Download ProFan v") + versionText;
+                                ShowTrayTip(L.T("Actualización disponible: ProFan v", "Update available: ProFan v") + versionText + L.T(". Haz clic aquí para descargar.", ". Click here to download."));
+                            }
+                            else
+                            {
+                                updateUrl = null;
+                                trayUpdates.Text = L.T("Buscar actualizaciones", "Check for updates");
+                                if (notifyWhenCurrent) ShowTrayTip(L.T("ProFan está actualizado.", "ProFan is up to date."));
+                            }
+                        }));
+                }
+                catch
+                {
+                    if (!IsDisposed && IsHandleCreated)
+                        BeginInvoke(new Action(delegate
+                        {
+                            checkingForUpdates = false;
+                            trayUpdates.Enabled = true;
+                            trayUpdates.Text = L.T("Buscar actualizaciones", "Check for updates");
+                            if (notifyWhenCurrent) ShowTrayTip(L.T("No se pudo comprobar si hay actualizaciones.", "Could not check for updates."));
+                        }));
+                }
+            });
+        }
+
+        private void OpenUpdatePage()
+        {
+            if (string.IsNullOrEmpty(updateUrl)) return;
+            try { Process.Start(new ProcessStartInfo(updateUrl) { UseShellExecute = true }); }
+            catch { MessageBox.Show(L.T("No se pudo abrir la página de descarga.", "Could not open the download page."), "ProFan", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         }
 
         private void ApplyContentLayout()
@@ -908,9 +1010,33 @@ namespace ProFan
 
         private void ShowFromTray()
         {
+            handlingInitialMinimize = false;
+            ShowInTaskbar = true;
             Show();
             WindowState = FormWindowState.Normal;
+            ShowWindow(Handle, 9);
+            CenterMainWindow();
+            BringToFront();
             Activate();
+            SetForegroundWindow(Handle);
+            BeginInvoke(new Action(delegate
+            {
+                if (IsDisposed) return;
+                WindowState = FormWindowState.Normal;
+                ShowWindow(Handle, 9);
+                CenterMainWindow();
+                BringToFront();
+                Activate();
+                SetForegroundWindow(Handle);
+            }));
+        }
+
+        private void CenterMainWindow()
+        {
+            Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
+            int x = area.Left + Math.Max(0, (area.Width - normalWindowSize.Width) / 2);
+            int y = area.Top + Math.Max(0, (area.Height - normalWindowSize.Height) / 2);
+            Bounds = new Rectangle(new Point(x, y), normalWindowSize);
         }
 
         private void ShowTrayTip(string message)
@@ -939,6 +1065,7 @@ namespace ProFan
             tray.Dispose();
             if (trayFrames != null) foreach (var frame in trayFrames) if (frame != null) frame.Dispose();
             if (exitWait != null) { exitWait.Unregister(null); exitWait = null; }
+            if (showWait != null) { showWait.Unregister(null); showWait = null; }
             SystemEvents.SessionEnding -= SessionEnding;
             SystemEvents.PowerModeChanged -= PowerModeChanged;
             if (acpi != null) acpi.Dispose();

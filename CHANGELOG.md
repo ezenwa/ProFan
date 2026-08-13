@@ -2,6 +2,12 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.15] - 2026-08-12
+
+### Changed
+
+- Removes the redundant ProFan heading from notification messages.
+
 ## [1.1.14] - 2026-08-12
 
 ### Changed

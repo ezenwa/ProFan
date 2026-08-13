@@ -1041,7 +1041,7 @@ namespace ProFan
 
         private void ShowTrayTip(string message)
         {
-            tray.BalloonTipTitle = "ProFan";
+            tray.BalloonTipTitle = string.Empty;
             tray.BalloonTipText = message;
             tray.ShowBalloonTip(1800);
         }

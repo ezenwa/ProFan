@@ -56,8 +56,34 @@ namespace ProFan
                 if (exitCommand) return;
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new MainForm(exitSignal));
+                Application.Run(new MainForm(exitSignal, UserSettings.StartMinimized));
             }
+            }
+        }
+    }
+
+    internal static class UserSettings
+    {
+        private const string RegistryPath = @"Software\ProFan";
+
+        internal static bool StartMinimized
+        {
+            get
+            {
+                try
+                {
+                    using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryPath))
+                        return key != null && Convert.ToInt32(key.GetValue("StartMinimized", 0), CultureInfo.InvariantCulture) != 0;
+                }
+                catch { return false; }
+            }
+            set
+            {
+                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath))
+                {
+                    if (key == null) throw new InvalidOperationException(L.T("No se pudo guardar la preferencia.", "Could not save the preference."));
+                    key.SetValue("StartMinimized", value ? 1 : 0, RegistryValueKind.DWord);
+                }
             }
         }
     }
@@ -284,6 +310,7 @@ namespace ProFan
         private readonly ContextMenuStrip trayMenu = new ContextMenuStrip();
         private readonly ToolStripLabel trayStatus = new ToolStripLabel();
         private readonly ToolStripMenuItem trayAuto = new ToolStripMenuItem("Automático");
+        private readonly ToolStripMenuItem trayStartMinimized = new ToolStripMenuItem();
         private readonly ToolStripMenuItem[] traySpeeds = new ToolStripMenuItem[5];
         private AsusAcpi acpi;
         private bool manualActive;
@@ -299,14 +326,19 @@ namespace ProFan
         private Icon[] trayFrames;
         private RegisteredWaitHandle exitWait;
         private bool applyingLayout;
+        private bool syncingStartMinimized;
+        private bool handlingInitialMinimize;
+        private readonly bool startMinimized;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
         [DllImport("user32.dll")]
         private static extern bool DestroyIcon(IntPtr handle);
 
-        internal MainForm(EventWaitHandle exitSignal)
+        internal MainForm(EventWaitHandle exitSignal, bool startMinimized)
         {
+            this.startMinimized = startMinimized;
+            handlingInitialMinimize = startMinimized;
             Text = "ProFan";
             ClientSize = new Size(520, 410);
             FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -379,11 +411,26 @@ namespace ProFan
 
             BuildTrayMenu(values);
             Load += OnLoad;
-            Shown += delegate { BeginInvoke(new Action(ApplyContentLayout)); };
+            Shown += delegate
+            {
+                if (this.startMinimized)
+                {
+                    Hide();
+                    WindowState = FormWindowState.Normal;
+                    ShowInTaskbar = true;
+                    handlingInitialMinimize = false;
+                }
+                BeginInvoke(new Action(ApplyContentLayout));
+            };
             FormClosing += OnClosing;
             Resize += delegate
             {
-                if (WindowState == FormWindowState.Minimized) { Hide(); ShowTrayTip(L.T("ProFan continúa disponible aquí.", "ProFan is still available here.")); }
+                if (WindowState == FormWindowState.Minimized)
+                {
+                    Hide();
+                    if (!handlingInitialMinimize)
+                        ShowTrayTip(L.T("ProFan continúa disponible aquí.", "ProFan is still available here."));
+                }
                 else ApplyContentLayout();
             };
             SystemEvents.SessionEnding += SessionEnding;
@@ -394,6 +441,11 @@ namespace ProFan
             animationTimer.Interval = 120;
             animationTimer.Tick += AnimateTray;
             animationTimer.Start();
+            if (startMinimized)
+            {
+                WindowState = FormWindowState.Minimized;
+                ShowInTaskbar = false;
+            }
             exitWait = ThreadPool.RegisterWaitForSingleObject(exitSignal, delegate
             {
                 if (!IsDisposed && IsHandleCreated)
@@ -458,10 +510,15 @@ namespace ProFan
             open.Click += delegate { ShowFromTray(); };
             var about = new ToolStripMenuItem(L.T("Acerca de ProFan", "About ProFan"));
             about.Click += delegate { ShowAbout(); };
+            trayStartMinimized.Text = L.T("Iniciar minimizado", "Start minimized");
+            trayStartMinimized.CheckOnClick = true;
+            trayStartMinimized.Checked = startMinimized;
+            trayStartMinimized.CheckedChanged += TrayStartMinimizedChanged;
             var exit = new ToolStripMenuItem(L.T("Salir", "Exit"));
             exit.Click += delegate { exitRequested = true; SafeRestore(); Close(); };
             trayMenu.Items.Add(open);
             trayMenu.Items.Add(about);
+            trayMenu.Items.Add(trayStartMinimized);
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add(exit);
 
@@ -711,6 +768,30 @@ namespace ProFan
         private void PercentageClick(object sender, EventArgs e)
         {
             ApplyManual((int)((Button)sender).Tag, false);
+        }
+
+        private void TrayStartMinimizedChanged(object sender, EventArgs e)
+        {
+            if (syncingStartMinimized) return;
+            SaveStartMinimized(trayStartMinimized.Checked);
+        }
+
+        private void SaveStartMinimized(bool value)
+        {
+            try
+            {
+                UserSettings.StartMinimized = value;
+                syncingStartMinimized = true;
+                trayStartMinimized.Checked = value;
+            }
+            catch (Exception ex)
+            {
+                syncingStartMinimized = true;
+                bool saved = UserSettings.StartMinimized;
+                trayStartMinimized.Checked = saved;
+                MessageBox.Show(ex.Message, "ProFan", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally { syncingStartMinimized = false; }
         }
 
         private void ApplyManual(int percent, bool fromTray)

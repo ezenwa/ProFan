@@ -18,4 +18,4 @@ Two timers are used: a one-second hardware/status timer and a lightweight notifi
 
 A named mutex prevents multiple controller instances. A named event powers `ProFan.exe --exit`, allowing the installer/uninstaller to request a safe restore and shutdown.
 
-The installer stores the chosen UI language in `ProFan.ini` beside the installed executable.
+The installer stores the chosen UI language in `ProFan.ini` beside the installed executable. The optional minimized-startup preference is stored per user as the `StartMinimized` DWORD under `HKEY_CURRENT_USER\Software\ProFan`; it can be changed from the notification-area menu and does not affect fan-control state.

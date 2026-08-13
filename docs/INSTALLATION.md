@@ -15,6 +15,7 @@
 - **Return to Automatic:** restores the ASUS profile active before manual control.
 - **Notification-area icon:** right-click for quick presets, status, Open, or Exit.
 - **Close window:** preserves the current mode and keeps ProFan available in the notification area.
+- **Start minimized:** when enabled in the notification-area menu, future launches open directly in that area.
 - **Exit:** restores Automatic and terminates ProFan.
 
 The percentage is a firmware request and may not map linearly to physical RPM.
@@ -36,6 +37,7 @@ While manual control is active, ProFan maintains both fan curves every two secon
 - **Volver a Automático:** restaura el perfil ASUS anterior.
 - **Icono del área de notificación:** clic derecho para porcentajes, estado, Abrir o Salir.
 - **Cerrar ventana:** conserva el modo actual y mantiene ProFan en el área de notificación.
+- **Iniciar minimizado:** al activarlo en el menú del área de notificación, los próximos inicios se abren directamente en esa área.
 - **Salir:** restaura Automático y finaliza ProFan.
 
 El porcentaje es una solicitud al firmware y puede no corresponder linealmente con las RPM físicas.

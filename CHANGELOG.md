@@ -2,6 +2,12 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.9] - 2026-08-12
+
+### Added
+
+- Adds a persistent Start minimized preference to the notification-area menu.
+
 ## [1.1.8] - 2026-08-09
 
 ### Fixed

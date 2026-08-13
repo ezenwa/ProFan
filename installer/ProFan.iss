@@ -1,5 +1,5 @@
 #define MyAppName "ProFan"
-#define MyAppVersion "1.1.8"
+#define MyAppVersion "1.1.9"
 #define MyAppPublisher "Joshua Ezenwa"
 #define MyAppExeName "ProFan.exe"
 

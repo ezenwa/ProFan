@@ -21,6 +21,7 @@ ProFan is a Windows fan-control utility for the **ASUS ProArt PX13 HN7306**. It 
 - Optional elevated startup with Windows, minimized to the notification area and configurable from its menu.
 - Automatic GitHub update checks with notification-area alerts and a manual check action.
 - Automatic restore when suspending, signing out, or exiting ProFan completely.
+- Automatic ASUS control while the lid is closed, suspended, or hibernated, followed by safe restoration of the previous manual percentage on resume.
 - Spanish/English Inno Setup installer, Start menu shortcut, desktop shortcut, and uninstaller.
 
 ## Preview

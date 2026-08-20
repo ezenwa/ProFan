@@ -19,6 +19,7 @@
 - **Start with Windows (minimized):** creates an elevated logon task so ProFan starts automatically in the notification area without a UAC prompt. Manual launches still open the main window.
 - **Check for updates:** checks the latest GitHub release; ProFan also checks automatically at startup and alerts only when a newer version is available.
 - **Exit:** restores Automatic and terminates ProFan.
+- **Lid close, suspend, or hibernate:** temporarily restores ASUS Automatic. If manual mode was active, ProFan reapplies the same percentage after resume; if recovery fails, it remains in Automatic.
 
 The percentage is a firmware request and may not map linearly to physical RPM.
 
@@ -43,6 +44,7 @@ While manual control is active, ProFan maintains both fan curves every two secon
 - **Iniciar con Windows (minimizado):** crea una tarea de inicio de sesión elevada para que ProFan arranque automáticamente en el área de notificación sin mostrar UAC. Las aperturas manuales siguen mostrando la ventana principal.
 - **Buscar actualizaciones:** consulta la release más reciente en GitHub; ProFan también lo hace automáticamente al iniciar y solo avisa si existe una versión superior.
 - **Salir:** restaura Automático y finaliza ProFan.
+- **Cerrar la tapa, suspender o hibernar:** restaura temporalmente Automático de ASUS. Si estaba activo el modo manual, ProFan reaplica el mismo porcentaje al reanudar; si la recuperación falla, permanece en Automático.
 
 El porcentaje es una solicitud al firmware y puede no corresponder linealmente con las RPM físicas.
 

@@ -6,7 +6,9 @@
 - Manual control is reported as active only after both CPU and GPU curves are accepted.
 - While manual control is active, ProFan refreshes both curves every two seconds and recovers the manual performance endpoint if another ASUS service changes it.
 - Closing the window preserves the current mode because ProFan remains active in the notification area.
-- Automatic restoration is attempted on Exit, suspend, sign-out, process exit, installer upgrade, and uninstall.
+- Automatic restoration is attempted when the lid closes, on suspend or hibernation, Exit, sign-out, process exit, installer upgrade, and uninstall.
+- Manual-curve maintenance stops before low-power entry. If manual mode was active, ProFan remembers its percentage and reapplies it only after resume; failed recovery remains safely in Automatic.
+- A resume signal cannot reapply manual control while the lid sensor still reports closed or Windows still reports suspended.
 - ProFan uses the ASUS firmware interface; it does not install a kernel driver.
 - Only one ProFan instance can control the firmware.
 

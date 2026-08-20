@@ -375,6 +375,7 @@ namespace ProFan
         private readonly Label footnote = new Label();
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private readonly System.Windows.Forms.Timer animationTimer = new System.Windows.Forms.Timer();
+        private readonly System.Windows.Forms.Timer powerResumeTimer = new System.Windows.Forms.Timer();
         private readonly NotifyIcon tray = new NotifyIcon();
         private readonly ContextMenuStrip trayMenu = new ContextMenuStrip();
         private readonly ToolStripLabel trayStatus = new ToolStripLabel();
@@ -403,6 +404,21 @@ namespace ProFan
         private readonly bool startWithWindows;
         private bool checkingForUpdates;
         private string updateUrl;
+        private IntPtr lidNotification;
+        private bool resumeManualPending;
+        private int resumeManualSpeed;
+        private int resumeAttempts;
+        private bool lidClosed;
+        private bool systemSuspended;
+        private const int MaxResumeAttempts = 8;
+        private static readonly Guid LidSwitchStateChange = new Guid("BA3E0F4D-B817-4094-A2D1-D56379E6A0F3");
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PowerBroadcastSetting
+        {
+            internal Guid PowerSetting;
+            internal uint DataLength;
+        }
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
@@ -412,6 +428,10 @@ namespace ProFan
         private static extern bool ShowWindow(IntPtr hwnd, int command);
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hwnd);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid settingGuid, uint flags);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnregisterPowerSettingNotification(IntPtr handle);
 
         internal MainForm(EventWaitHandle exitSignal, EventWaitHandle showSignal, bool startMinimized, bool startWithWindows)
         {
@@ -523,6 +543,8 @@ namespace ProFan
             animationTimer.Interval = 120;
             animationTimer.Tick += AnimateTray;
             animationTimer.Start();
+            powerResumeTimer.Interval = 1500;
+            powerResumeTimer.Tick += TryResumeManualControl;
             if (startMinimized)
                 WindowState = FormWindowState.Minimized;
             exitWait = ThreadPool.RegisterWaitForSingleObject(exitSignal, delegate
@@ -540,6 +562,8 @@ namespace ProFan
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            Guid lidSetting = LidSwitchStateChange;
+            lidNotification = RegisterPowerSettingNotification(Handle, ref lidSetting, 0);
             int enabled = 1;
             int mica = 2;
             int rounded = 2;
@@ -552,9 +576,20 @@ namespace ProFan
             catch { }
         }
 
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            if (lidNotification != IntPtr.Zero)
+            {
+                UnregisterPowerSettingNotification(lidNotification);
+                lidNotification = IntPtr.Zero;
+            }
+            base.OnHandleDestroyed(e);
+        }
+
         protected override void WndProc(ref Message message)
         {
             const int WmSysCommand = 0x0112;
+            const int WmPowerBroadcast = 0x0218;
             const int ScSize = 0xF000;
             const int ScMaximize = 0xF030;
             if (message.Msg == WmSysCommand)
@@ -562,7 +597,45 @@ namespace ProFan
                 int command = message.WParam.ToInt32() & 0xFFF0;
                 if (command == ScSize || command == ScMaximize) return;
             }
+            else if (message.Msg == WmPowerBroadcast)
+            {
+                HandlePowerBroadcast(message.WParam.ToInt32(), message.LParam);
+            }
             base.WndProc(ref message);
+        }
+
+        private void HandlePowerBroadcast(int powerEvent, IntPtr data)
+        {
+            const int PbtApmQuerySuspend = 0x0000;
+            const int PbtApmSuspend = 0x0004;
+            const int PbtApmResumeSuspend = 0x0007;
+            const int PbtApmResumeAutomatic = 0x0012;
+            const int PbtPowerSettingChange = 0x8013;
+
+            if (powerEvent == PbtApmQuerySuspend || powerEvent == PbtApmSuspend)
+            {
+                systemSuspended = true;
+                PrepareForLowPower();
+                return;
+            }
+            if (powerEvent == PbtApmResumeSuspend || powerEvent == PbtApmResumeAutomatic)
+            {
+                systemSuspended = false;
+                if (!lidClosed) ResumeFromLowPower();
+                return;
+            }
+            if (powerEvent != PbtPowerSettingChange || data == IntPtr.Zero) return;
+
+            try
+            {
+                var setting = (PowerBroadcastSetting)Marshal.PtrToStructure(data, typeof(PowerBroadcastSetting));
+                if (setting.PowerSetting != LidSwitchStateChange || setting.DataLength < 1) return;
+                byte lidOpen = Marshal.ReadByte(data, Marshal.SizeOf(typeof(PowerBroadcastSetting)));
+                lidClosed = lidOpen == 0;
+                if (lidClosed) PrepareForLowPower();
+                else if (!systemSuspended) ResumeFromLowPower();
+            }
+            catch { }
         }
 
         private void BuildTrayMenu(int[] values)
@@ -960,9 +1033,17 @@ namespace ProFan
 
         private void ApplyManual(int percent, bool fromTray)
         {
-            if (acpi == null) return;
+            if (lidClosed || systemSuspended)
+            {
+                ShowTrayTip(L.T(
+                    "El control manual se reanudará cuando el equipo esté activo y la tapa abierta.",
+                    "Manual control will resume when the system is active and the lid is open."));
+                return;
+            }
+            CancelPendingManualResume();
             try
             {
+                if (acpi == null) acpi = new AsusAcpi();
                 bool wasManual = manualActive;
                 bool startRequired = true;
                 if (!manualActive)
@@ -993,6 +1074,7 @@ namespace ProFan
 
         private void SetAutomatic(bool notify)
         {
+            CancelPendingManualResume();
             try
             {
                 RestoreAutomatic();
@@ -1047,7 +1129,11 @@ namespace ProFan
 
         private void UpdateStatus(object sender, EventArgs e)
         {
-            if (acpi == null) return;
+            if (acpi == null)
+            {
+                try { acpi = new AsusAcpi(); }
+                catch { return; }
+            }
             try
             {
                 if (manualActive && ++refreshCounter >= ManualRefreshSeconds)
@@ -1067,7 +1153,12 @@ namespace ProFan
                 rpm.Text = "CPU  " + (cpu > 0 ? cpu.ToString("N0") : "—") + " RPM     ·     GPU  " + (gpu > 0 ? gpu.ToString("N0") : "—") + " RPM";
                 UpdateTrayStatus();
             }
-            catch { rpm.Text = "CPU  — RPM     ·     GPU  — RPM"; }
+            catch
+            {
+                try { if (acpi != null) acpi.Dispose(); } catch { }
+                acpi = null;
+                rpm.Text = "CPU  — RPM     ·     GPU  — RPM";
+            }
         }
 
         private void ShowFromTray()
@@ -1122,6 +1213,7 @@ namespace ProFan
             }
             timer.Stop();
             animationTimer.Stop();
+            powerResumeTimer.Stop();
             SafeRestore();
             tray.Visible = false;
             tray.Dispose();
@@ -1133,9 +1225,113 @@ namespace ProFan
             if (acpi != null) acpi.Dispose();
         }
 
-        private void PowerModeChanged(object sender, PowerModeChangedEventArgs e) { if (e.Mode == PowerModes.Suspend) { SafeRestore(); PaintState(); } }
+        private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            Action action = e.Mode == PowerModes.Suspend
+                ? new Action(delegate { systemSuspended = true; PrepareForLowPower(); })
+                : e.Mode == PowerModes.Resume
+                    ? new Action(delegate { systemSuspended = false; if (!lidClosed) ResumeFromLowPower(); })
+                    : null;
+            if (action == null) return;
+            if (InvokeRequired) BeginInvoke(action); else action();
+        }
+
+        private void PrepareForLowPower()
+        {
+            if (exitRequested) return;
+            timer.Stop();
+            powerResumeTimer.Stop();
+            if (manualActive)
+            {
+                resumeManualSpeed = manualSpeed;
+                resumeManualPending = true;
+            }
+
+            if (acpi != null)
+            {
+                int restore = previousMode == AsusAcpi.FullSpeed ? 0 : previousMode;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    try { if (acpi.Set(AsusAcpi.PerformanceMode, restore) == 1) break; }
+                    catch { }
+                }
+            }
+            manualActive = false;
+            refreshCounter = 0;
+            PaintState();
+        }
+
+        private void ResumeFromLowPower()
+        {
+            if (exitRequested || lidClosed || systemSuspended) return;
+            try { if (acpi != null) acpi.Dispose(); } catch { }
+            acpi = null;
+            timer.Start();
+            if (!resumeManualPending)
+            {
+                UpdateStatus(null, EventArgs.Empty);
+                return;
+            }
+            resumeAttempts = 0;
+            powerResumeTimer.Stop();
+            powerResumeTimer.Start();
+        }
+
+        private void TryResumeManualControl(object sender, EventArgs e)
+        {
+            if (lidClosed || systemSuspended)
+            {
+                powerResumeTimer.Stop();
+                return;
+            }
+            if (exitRequested || !resumeManualPending)
+            {
+                powerResumeTimer.Stop();
+                return;
+            }
+
+            resumeAttempts++;
+            try
+            {
+                if (acpi == null) acpi = new AsusAcpi();
+                if (acpi.StartManualControl(resumeManualSpeed))
+                {
+                    manualSpeed = resumeManualSpeed;
+                    manualActive = true;
+                    resumeManualPending = false;
+                    refreshCounter = 0;
+                    powerResumeTimer.Stop();
+                    timer.Start();
+                    PaintState();
+                    ShowTrayTip(L.T("Velocidad manual reanudada: ", "Manual speed resumed: ") + manualSpeed + "%");
+                    return;
+                }
+            }
+            catch { }
+
+            try { if (acpi != null) acpi.Dispose(); } catch { }
+            acpi = null;
+            if (resumeAttempts < MaxResumeAttempts) return;
+
+            resumeManualPending = false;
+            powerResumeTimer.Stop();
+            try { acpi = new AsusAcpi(); } catch { acpi = null; }
+            PaintState();
+            ShowTrayTip(L.T(
+                "No se pudo reanudar la velocidad manual. Se mantiene Automático.",
+                "Could not resume the manual speed. Automatic remains active."));
+        }
+
+        private void CancelPendingManualResume()
+        {
+            resumeManualPending = false;
+            resumeAttempts = 0;
+            powerResumeTimer.Stop();
+        }
+
         private void SessionEnding(object sender, SessionEndingEventArgs e) { SafeRestore(); }
         private void ProcessExit(object sender, EventArgs e) { SafeRestore(); }
-        private void SafeRestore() { try { RestoreAutomatic(); } catch { } }
+        private void SafeRestore() { CancelPendingManualResume(); try { RestoreAutomatic(); } catch { } }
     }
 }

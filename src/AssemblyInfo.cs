@@ -7,5 +7,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("ProFan")]
 [assembly: AssemblyCopyright("Copyright © 2026 Joshua Ezenwa")]
 [assembly: ComVisible(false)]
-[assembly: AssemblyVersion("1.1.16.0")]
-[assembly: AssemblyFileVersion("1.1.16.0")]
+[assembly: AssemblyVersion("1.1.17.0")]
+[assembly: AssemblyFileVersion("1.1.17.0")]

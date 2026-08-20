@@ -2,6 +2,17 @@
 
 All notable changes follow the principles of [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.17] - 2026-08-20
+
+### Added
+
+- Restores ASUS Automatic control when the lid closes or Windows suspends or hibernates.
+- Reapplies the previous manual percentage after the lid opens or Windows resumes, with bounded ATKACPI recovery retries.
+
+### Fixed
+
+- Stops the manual-curve maintenance timer before a low-power transition so it cannot reassert manual control during sleep entry.
+
 ## [1.1.16] - 2026-08-13
 
 ### Fixed
